@@ -190,8 +190,7 @@ When extracting a package to its own go modules, some extra steps are required, 
 * Add weekly dependabot checks (see [dependabot.yml](./.github/dependabot.yml))
 * Pre-configure SonarCloud
     * Add `sonar-projects.properties` (see math [sonar-projects.properties](./math/sonar-projects.properties) for example)
-    * Add a GitHub Workflow entry for running the scans (see [test.yml](.github/workflows/test.yml))
-    * Add an entry for skipping the tests (see [test-skip.yml](.github/workflows/test-skip.yml))
+    * Add a GitHub Workflow entry for running the scans when there is a diff (see [test.yml](.github/workflows/test.yml))
     * Ask the team to add the project to SonarCloud
 
 ## Protobuf
