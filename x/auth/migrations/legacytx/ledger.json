@@ -1,0 +1,90 @@
+[
+	{
+		"name": "minimal",
+		"tx": {
+			"account_number": "1",
+			"chain_id": "my-chain",
+			"fee": { "amount": [{ "amount": "2000", "denom": "uatom" }], "gas": "100000" },
+			"memo": "",
+			"msgs": [{ "type": "cosmos-sdk/MsgSend", "value": { "amount": [{ "amount": "10000000", "denom": "uatom" }], "from_address": "cosmos1ulav3hsenupswqfkw2y3sup5kgtqwnvqa8eyhs", "to_address": "cosmos1ejrf4cur2wy6kfurg9f2jppp2h3afe5h6pkh5t" } }],
+			"sequence": "2"
+		}
+	},
+	{
+		"name": "minimal in expert mode",
+		"tx": {
+			"account_number": "1",
+			"chain_id": "my-chain",
+			"fee": { "amount": [{ "amount": "2000", "denom": "uatom" }], "gas": "100000" },
+			"memo": "",
+			"msgs": [{ "type": "cosmos-sdk/MsgSend", "value": { "amount": [{ "amount": "10000000", "denom": "uatom" }], "from_address": "cosmos1ulav3hsenupswqfkw2y3sup5kgtqwnvqa8eyhs", "to_address": "cosmos1ejrf4cur2wy6kfurg9f2jppp2h3afe5h6pkh5t" } }],
+			"sequence": "2"
+		}
+	},
+	{
+		"name": "long text in nested value",
+		"tx": {
+			"account_number": "1",
+			"chain_id": "my-chain",
+			"fee": { "amount": [{ "amount": "2000", "denom": "uatom" }], "gas": "100000" },
+			"memo": "",
+			"msgs": [
+				{
+					"type": "cosmos-sdk/v1/MsgVote",
+					"value": {
+						"metadata": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Also it ends in  a single ampersand @",
+						"option": 1,
+						"proposal_id": "1",
+						"voter": "cosmos1ulav3hsenupswqfkw2y3sup5kgtqwnvqa8eyhs"
+					}
+				}
+			],
+			"sequence": "2"
+		}
+	},
+	{
+		"name": "a bit of everything",
+		"tx": {
+			"account_number": "1",
+			"chain_id": "my-chain",
+			"fee": { "amount": [{ "amount": "2000", "denom": "uatom" }], "gas": "100000", "granter": "cosmos1ulav3hsenupswqfkw2y3sup5kgtqwnvqa8eyhs", "payer": "cosmos1ulav3hsenupswqfkw2y3sup5kgtqwnvqa8eyhs" },
+			"memo": "\u003e ⚛️\\u269B⚛️     ",
+			"msgs": [
+				{
+					"type": "cosmos-sdk/MsgExec",
+					"value": {
+						"grantee": "cosmos1ulav3hsenupswqfkw2y3sup5kgtqwnvqa8eyhs",
+						"msgs": [
+							{
+								"type": "cosmos-sdk/MsgSend",
+								"value": {
+									"amount": [{ "amount": "10000000", "denom": "uatom" }],
+									"from_address": "cosmos1ulav3hsenupswqfkw2y3sup5kgtqwnvqa8eyhs",
+									"to_address": "cosmos1ejrf4cur2wy6kfurg9f2jppp2h3afe5h6pkh5t"
+								}
+							}
+						]
+					}
+				},
+				{
+					"type": "cosmos-sdk/v1/MsgVote",
+					"value": {
+						"metadata": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Also it ends in  a single ampersand @",
+						"option": 1,
+						"proposal_id": "1",
+						"voter": "cosmos1ulav3hsenupswqfkw2y3sup5kgtqwnvqa8eyhs"
+					}
+				}
+			],
+			"sequence": "2",
+			"timeout_height": "20",
+			"tip": {
+				"amount": [
+					{ "amount": "20000", "denom": "uatom" },
+					{ "amount": "30000", "denom": "uosmo" }
+				],
+				"tipper": "cosmos1ejrf4cur2wy6kfurg9f2jppp2h3afe5h6pkh5t"
+			}
+		}
+	}
+]
