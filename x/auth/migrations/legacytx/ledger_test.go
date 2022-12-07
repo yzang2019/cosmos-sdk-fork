@@ -44,7 +44,7 @@ func TestLedger(t *testing.T) {
 	err = json.Unmarshal(rawTxs, &txTestcases)
 	require.NoError(t, err)
 
-	raw, err := os.ReadFile("./ledger.json")
+	raw, err := os.ReadFile("./ledger_amino.json")
 	require.NoError(t, err)
 	var testcases []ledgerTestCase
 	err = json.Unmarshal(raw, &testcases)
