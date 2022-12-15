@@ -59,7 +59,7 @@
 			"account_number": "1",
 			"chain_id": "my-chain",
 			"fee": { "amount": [{ "amount": "2000", "denom": "uatom" }], "gas": "100000", "granter": "cosmos1ulav3hsenupswqfkw2y3sup5kgtqwnvqa8eyhs", "payer": "cosmos1ulav3hsenupswqfkw2y3sup5kgtqwnvqa8eyhs" },
-			"memo": "\u003e ⚛️\\u269B⚛️     ",
+			"memo": "some memo",
 			"msgs": [
 				{
 					"type": "cosmos-sdk/MsgExec",

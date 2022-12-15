@@ -235,7 +235,7 @@
 						"metadata": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Also it ends in  a single ampersand @"
 					}
 				],
-				"memo": "> ⚛️\\u269B⚛️     ",
+				"memo": "some memo",
 				"timeout_height": 20,
 				"extension_options": [
 					{
@@ -361,7 +361,7 @@
 				"indent": 3
 			},
 			{ "text": "End of Message" },
-			{ "text": "Memo: > ⚛️\\u269B⚛️     " },
+			{ "text": "Memo: some memo" },
 			{ "text": "Fees: 0.002 ATOM" },
 			{ "text": "Fee payer: cosmos1ejrf4cur2wy6kfurg9f2jppp2h3afe5h6pkh5t", "expert": true },
 			{ "text": "Fee granter: cosmos1ulav3hsenupswqfkw2y3sup5kgtqwnvqa8eyhs", "expert": true },
@@ -406,7 +406,7 @@
 			{ "text": "Params object", "indent": 2, "expert": true },
 			{ "text": "Max memo characters: 10", "indent": 3, "expert": true },
 			{ "text": "End of Non critical extension options", "expert": true },
-			{ "text": "Hash of raw bytes: 7ea02e8f0baed2db969e2d9ae4dc51fa31116259bd42897588072faf0ebb4d2e", "expert": true }
+			{ "text": "Hash of raw bytes: d454f9d0b2b1a5159254f004c9398ea274b2b50a31f471304e3abd413bd38b99", "expert": true }
 		]
 	}
 ]
