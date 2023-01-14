@@ -360,7 +360,8 @@ func (m *Manager) RestoreChunk(chunk []byte) (bool, error) {
 	// Pass the chunk to the restore, and wait for completion if it was the final one.
 	m.chRestore <- io.NopCloser(bytes.NewReader(chunk))
 	m.restoreChunkIndex++
-	fmt.Printf("[COSMOS] Created reader channel, restoreIndex is %d, numOfChunkHashes is %d \n", m.restoreChunkIndex, len(m.restoreChunkHashes))
+	writeEnd := time.Now().UnixMilli()
+	fmt.Printf("[COSMOS] Created reader channel, restoreIndex is %d, numOfChunkHashes is %d , with latency: %d\n", m.restoreChunkIndex, len(m.restoreChunkHashes), writeEnd-writeStart)
 
 	if int(m.restoreChunkIndex) >= len(m.restoreChunkHashes) {
 		close(m.chRestore)
@@ -374,8 +375,6 @@ func (m *Manager) RestoreChunk(chunk []byte) (bool, error) {
 		if !done.complete {
 			return false, sdkerrors.Wrap(sdkerrors.ErrLogic, "restore ended prematurely")
 		}
-		writeEnd := time.Now().UnixMilli()
-		fmt.Printf("[COSMOS] Finished writing chunk of size %d to the store with latency: %d \n", len(chunk), writeEnd-writeStart)
 		return true, nil
 	}
 	return false, nil
