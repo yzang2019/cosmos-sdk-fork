@@ -324,7 +324,7 @@ func (m *Manager) restoreSnapshot(snapshot types.Snapshot, chChunks <-chan io.Re
 // RestoreChunk adds a chunk to an active snapshot restoration, mirroring ABCI ApplySnapshotChunk.
 // Chunks must be given until the restore is complete, returning true, or a chunk errors.
 func (m *Manager) RestoreChunk(chunk []byte) (bool, error) {
-	fmt.Printf("[COSMOS] Restoring chunk of %d bytes", len(chunk))
+	fmt.Printf("[COSMOS] Restoring chunk of %d bytes\n", len(chunk))
 
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
@@ -350,7 +350,7 @@ func (m *Manager) RestoreChunk(chunk []byte) (bool, error) {
 	// Verify the chunk hash.
 	hash := sha256.Sum256(chunk)
 	expected := m.restoreChunkHashes[m.restoreChunkIndex]
-	fmt.Printf("[COSMOS] Expecting index %d with hash of %s", m.restoreChunkIndex, hash)
+	fmt.Printf("[COSMOS] Expecting chunk index: %d \n", m.restoreChunkIndex)
 	if !bytes.Equal(hash[:], expected) {
 		return false, sdkerrors.Wrapf(types.ErrChunkHashMismatch,
 			"expected %x, got %x", hash, expected)
@@ -360,8 +360,7 @@ func (m *Manager) RestoreChunk(chunk []byte) (bool, error) {
 	// Pass the chunk to the restore, and wait for completion if it was the final one.
 	m.chRestore <- io.NopCloser(bytes.NewReader(chunk))
 	m.restoreChunkIndex++
-	readerEnd := time.Now().UnixMilli()
-	fmt.Printf("[COSMOS] Created reader channel with latency: %d", readerEnd-writeStart)
+	fmt.Printf("[COSMOS] Created reader channel, restoreIndex is %d, numOfChunkHashes is %d \n", m.restoreChunkIndex, len(m.restoreChunkHashes))
 
 	if int(m.restoreChunkIndex) >= len(m.restoreChunkHashes) {
 		close(m.chRestore)
@@ -376,7 +375,7 @@ func (m *Manager) RestoreChunk(chunk []byte) (bool, error) {
 			return false, sdkerrors.Wrap(sdkerrors.ErrLogic, "restore ended prematurely")
 		}
 		writeEnd := time.Now().UnixMilli()
-		fmt.Printf("[COSMOS] Finished writing chunk of size %d to the store with latency: %d", len(chunk), writeEnd-writeStart)
+		fmt.Printf("[COSMOS] Finished writing chunk of size %d to the store with latency: %d \n", len(chunk), writeEnd-writeStart)
 		return true, nil
 	}
 	return false, nil
