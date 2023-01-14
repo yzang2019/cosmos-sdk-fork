@@ -9,6 +9,7 @@ import (
 	"math"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/cosmos/cosmos-sdk/snapshots/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
@@ -41,12 +42,12 @@ type restoreDone struct {
 // Although the ABCI interface (and this manager) passes chunks as byte slices, the internal
 // snapshot/restore APIs use IO streams (i.e. chan io.ReadCloser), for two reasons:
 //
-// 1) In the future, ABCI should support streaming. Consider e.g. InitChain during chain
-//    upgrades, which currently passes the entire chain state as an in-memory byte slice.
-//    https://github.com/tendermint/tendermint/issues/5184
+//  1. In the future, ABCI should support streaming. Consider e.g. InitChain during chain
+//     upgrades, which currently passes the entire chain state as an in-memory byte slice.
+//     https://github.com/tendermint/tendermint/issues/5184
 //
-// 2) io.ReadCloser streams automatically propagate IO errors, and can pass arbitrary
-//    errors via io.Pipe.CloseWithError().
+//  2. io.ReadCloser streams automatically propagate IO errors, and can pass arbitrary
+//     errors via io.Pipe.CloseWithError().
 type Manager struct {
 	store      *Store
 	multistore types.Snapshotter
@@ -323,6 +324,8 @@ func (m *Manager) restoreSnapshot(snapshot types.Snapshot, chChunks <-chan io.Re
 // RestoreChunk adds a chunk to an active snapshot restoration, mirroring ABCI ApplySnapshotChunk.
 // Chunks must be given until the restore is complete, returning true, or a chunk errors.
 func (m *Manager) RestoreChunk(chunk []byte) (bool, error) {
+	fmt.Printf("[COSMOS] Restoring chunk of %d bytes", len(chunk))
+
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 	if m.operation != opRestore {
@@ -347,26 +350,33 @@ func (m *Manager) RestoreChunk(chunk []byte) (bool, error) {
 	// Verify the chunk hash.
 	hash := sha256.Sum256(chunk)
 	expected := m.restoreChunkHashes[m.restoreChunkIndex]
+	fmt.Printf("[COSMOS] Expecting index %d with hash of %s", m.restoreChunkIndex, hash)
 	if !bytes.Equal(hash[:], expected) {
 		return false, sdkerrors.Wrapf(types.ErrChunkHashMismatch,
 			"expected %x, got %x", hash, expected)
 	}
 
+	writeStart := time.Now().UnixMilli()
 	// Pass the chunk to the restore, and wait for completion if it was the final one.
-	m.chRestore <- ioutil.NopCloser(bytes.NewReader(chunk))
+	m.chRestore <- io.NopCloser(bytes.NewReader(chunk))
 	m.restoreChunkIndex++
+	readerEnd := time.Now().UnixMilli()
+	fmt.Printf("[COSMOS] Created reader channel with latency: %d", readerEnd-writeStart)
 
 	if int(m.restoreChunkIndex) >= len(m.restoreChunkHashes) {
 		close(m.chRestore)
 		m.chRestore = nil
 		done := <-m.chRestoreDone
 		m.endLocked()
+
 		if done.err != nil {
 			return false, done.err
 		}
 		if !done.complete {
 			return false, sdkerrors.Wrap(sdkerrors.ErrLogic, "restore ended prematurely")
 		}
+		writeEnd := time.Now().UnixMilli()
+		fmt.Printf("[COSMOS] Finished writing chunk of size %d to the store with latency: %d", len(chunk), writeEnd-writeStart)
 		return true, nil
 	}
 	return false, nil
