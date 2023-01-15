@@ -753,7 +753,6 @@ func (rs *Store) Restore(height uint64, format uint32, protoReader protoio.Reade
 	go func() {
 		for !stopReading {
 			snapshotItem = snapshottypes.SnapshotItem{}
-			itemCount++
 			err := protoReader.ReadMsg(&snapshotItem)
 			if err == io.EOF {
 				fmt.Println("[COSMOS] SnapshotItem_Store going to commit and close importer")
@@ -774,6 +773,7 @@ func (rs *Store) Restore(height uint64, format uint32, protoReader protoio.Reade
 		select {
 		case snapshotItem := <-chMessage:
 			var err error
+			itemCount++
 			switch item := snapshotItem.Item.(type) {
 			case *snapshottypes.SnapshotItem_Store:
 				fmt.Println("[COSMOS-STORE] SnapshotItem_Store going to commit and close importer")
