@@ -744,7 +744,6 @@ func (rs *Store) Restore(height uint64, format uint32, protoReader protoio.Reade
 	var snapshotItem snapshottypes.SnapshotItem
 	var itemCount = 0
 	var importLatencyAggregate float64
-	var readLatencyAggregate float64
 	var passedTime float64
 	var storeAggregate float64
 	var startTime = time.Now().UnixMicro()
@@ -770,6 +769,16 @@ func (rs *Store) Restore(height uint64, format uint32, protoReader protoio.Reade
 	}()
 
 	for true {
+
+		if itemCount%10000 == 0 {
+			passedTime = float64(time.Now().UnixMicro()-startTime) / 1000
+			fmt.Printf("[COSMOS] Item count: %d \n", itemCount)
+			fmt.Printf("[COSMOS] SnapshotItem_Store aggregate latency: %f, passed time is %f\n", storeAggregate, passedTime)
+			fmt.Printf("[COSMOS] SnapshotItem_IAVL importer.add latency: %f, passed time is %f\n", importLatencyAggregate, passedTime)
+			storeAggregate = 0
+			importLatencyAggregate = 0
+		}
+
 		select {
 		case snapshotItem := <-chMessage:
 			var err error
@@ -806,6 +815,7 @@ func (rs *Store) Restore(height uint64, format uint32, protoReader protoio.Reade
 				fmt.Printf("[COSMOS-STORE] Encount SnapshotItem_Store with total latency of %f\n", latency)
 
 			case *snapshottypes.SnapshotItem_IAVL:
+				importStartTime := time.Now().UnixMicro()
 				if importer == nil {
 					stopReading = true
 					return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(sdkerrors.ErrLogic, "received IAVL node item before store item")
@@ -829,7 +839,6 @@ func (rs *Store) Restore(height uint64, format uint32, protoReader protoio.Reade
 				if node.Height == 0 && node.Value == nil {
 					node.Value = []byte{}
 				}
-				importStartTime := time.Now().UnixMicro()
 				err := importer.Add(node)
 				importEndTime := time.Now().UnixMicro()
 				importLatencyAggregate += float64(importEndTime-importStartTime) / 1000
@@ -845,16 +854,6 @@ func (rs *Store) Restore(height uint64, format uint32, protoReader protoio.Reade
 			time.Sleep(10 * time.Millisecond)
 		}
 
-		if itemCount%10000 == 0 {
-			passedTime = float64(time.Now().UnixMicro()-startTime) / 1000
-			fmt.Printf("[COSMOS] Item count: %d \n", itemCount)
-			fmt.Printf("[COSMOS] SnapshotItem_Store aggregate latency: %f, passed time is %f\n", storeAggregate, passedTime)
-			fmt.Printf("[COSMOS] Deserialize and read message latency: %f, passed time %f\n", readLatencyAggregate, passedTime)
-			fmt.Printf("[COSMOS] SnapshotItem_IAVL importer.add latency: %f, passed time is %f\n", importLatencyAggregate, passedTime)
-			readLatencyAggregate = 0
-			storeAggregate = 0
-			importLatencyAggregate = 0
-		}
 	}
 
 	endTime := time.Now().UnixMilli()
