@@ -824,11 +824,10 @@ loop:
 			break loop
 		}
 
-		if itemCount%5000 == 0 {
+		if itemCount%10000 == 0 {
 			passedTime = float64(time.Now().UnixMicro()-startTime) / 1000
 			fmt.Printf("[COSMOS-STORE] Item count: %d \n", itemCount)
 			fmt.Printf("[COSMOS-STORE] Deserialize and read message latency: %f, passed time %f\n", readLatencyAggregate, passedTime)
-			fmt.Printf("[COSMOS-STORE] SnapshotItem_Store commit latency: %f, createImport latency: %f\n", storeCommitAggregate, storeCreateImporterAggregate)
 			fmt.Printf("[COSMOS-STORE] SnapshotItem_IAVL importer.add latency: %f, passed time is %f\n", importLatencyAggregate, passedTime)
 			readLatencyAggregate = 0
 			storeCommitAggregate = 0
