@@ -334,7 +334,6 @@ func (m *Manager) restoreSnapshot(snapshot types.Snapshot, chChunks <-chan io.Re
 // Chunks must be given until the restore is complete, returning true, or a chunk errors.
 func (m *Manager) RestoreChunk(chunk []byte) (bool, error) {
 	fmt.Printf("[COSMOS] Restoring chunk of %d bytes\n", len(chunk))
-	m.store.db.Print()
 
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
