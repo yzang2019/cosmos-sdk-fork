@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	iavltree "github.com/cosmos/iavl"
 	protoio "github.com/gogo/protobuf/io"
@@ -745,23 +746,31 @@ func (rs *Store) Restore(
 	var snapshotItem snapshottypes.SnapshotItem
 loop:
 	for {
+		startRead := time.Now().UnixMilli()
 		snapshotItem = snapshottypes.SnapshotItem{}
 		err := protoReader.ReadMsg(&snapshotItem)
+		endRead := time.Now().UnixMilli()
+		fmt.Printf("[COSMOS-STORE] Deserialize and read message latency: %d\n", endRead-startRead)
 		if err == io.EOF {
 			break
 		} else if err != nil {
 			return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "invalid protobuf message")
 		}
-
+		fmt.Printf("[COSMOS-STORE] Item is: %s \n", snapshotItem.String())
 		switch item := snapshotItem.Item.(type) {
 		case *snapshottypes.SnapshotItem_Store:
 			if importer != nil {
+				startCommit := time.Now().UnixMilli()
 				err = importer.Commit()
+				endCommit := time.Now().UnixMilli()
+				fmt.Printf("[COSMOS-STORE] SnapshotItem_Store Importer commit latency: %d\n", endCommit-startCommit)
 				if err != nil {
 					return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "IAVL commit failed")
 				}
 				importer.Close()
 			}
+
+			getImporterStartTime := time.Now().UnixMilli()
 			store, ok := rs.GetStoreByName(item.Store.Name).(*iavl.Store)
 			if !ok || store == nil {
 				return snapshottypes.SnapshotItem{}, sdkerrors.Wrapf(sdkerrors.ErrLogic, "cannot import into non-IAVL store %q", item.Store.Name)
@@ -770,6 +779,9 @@ loop:
 			if err != nil {
 				return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "import failed")
 			}
+
+			getImporterEndTime := time.Now().UnixMilli()
+			fmt.Printf("[COSMOS-STORE] SnapshotItem_Store GetStoreByName+Import latency: %d\n", getImporterEndTime-getImporterStartTime)
 			defer importer.Close()
 
 		case *snapshottypes.SnapshotItem_IAVL:
@@ -794,7 +806,10 @@ loop:
 			if node.Height == 0 && node.Value == nil {
 				node.Value = []byte{}
 			}
+			importStartTime := time.Now().UnixMilli()
 			err := importer.Add(node)
+			importEndTime := time.Now().UnixMilli()
+			fmt.Printf("[COSMOS-STORE] SnapshotItem_IAVL importer.add latency: %d\n", importEndTime-importStartTime)
 			if err != nil {
 				return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "IAVL node import failed")
 			}
@@ -803,6 +818,7 @@ loop:
 			break loop
 		}
 	}
+	startCommit := time.Now().UnixMilli()
 
 	if importer != nil {
 		err := importer.Commit()
@@ -812,7 +828,12 @@ loop:
 		importer.Close()
 	}
 
+	endCommit := time.Now().UnixMilli()
+	fmt.Printf("[COSMOS-STORE] Outside of loop commit latency: %d\n", endCommit-startCommit)
+
 	flushMetadata(rs.db, int64(height), rs.buildCommitInfo(int64(height)), []int64{})
+	flushComplete := time.Now().UnixMilli()
+	fmt.Printf("[COSMOS-STORE] Outside of loop flush metadata latency: %d\n", flushComplete-endCommit)
 	return snapshotItem, rs.LoadLatestVersion()
 }
 

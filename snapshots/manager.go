@@ -300,12 +300,12 @@ func (m *Manager) restoreSnapshot(snapshot types.Snapshot, chChunks <-chan io.Re
 	defer streamReader.Close()
 
 	next, err := m.multistore.Restore(snapshot.Height, snapshot.Format, streamReader)
-	multiStoreRestoreComplete := time.Now().UnixMilli()
-	fmt.Printf("[COSMOS] MultiStoreRestore complete with a latency of: %d \n", multiStoreRestoreComplete-startTime)
+
 	if err != nil {
 		return sdkerrors.Wrap(err, "multistore restore")
 	}
-
+	multiStoreRestoreComplete := time.Now().UnixMilli()
+	fmt.Printf("[COSMOS] MultiStoreRestore complete with a latency of: %d \n", multiStoreRestoreComplete-startTime)
 	for {
 		if next.Item == nil {
 			// end of stream
