@@ -756,11 +756,8 @@ loop:
 		itemCount++
 		err := protoReader.ReadMsg(&snapshotItem)
 		endRead := time.Now().UnixMicro()
-		readLatencyAggregate += float64(endRead-startRead) / 1000 / 1000
-		if itemCount%10000 == 0 {
-			passedTime = float64(time.Now().UnixMicro()-startTime) / 1000 / 1000
+		readLatencyAggregate += float64(endRead-startRead) / 1000
 
-		}
 		if err == io.EOF {
 			break
 		} else if err != nil {
@@ -776,7 +773,7 @@ loop:
 				}
 				importer.Close()
 				endCommit := time.Now().UnixMicro()
-				storeCommitAggregate += float64(endCommit-startCommit) / 1000 / 1000
+				storeCommitAggregate += float64(endCommit-startCommit) / 1000
 			}
 
 			getImporterStartTime := time.Now().UnixMicro()
@@ -790,7 +787,7 @@ loop:
 			}
 
 			getImporterEndTime := time.Now().UnixMicro()
-			storeCreateImporterAggregate += float64(getImporterEndTime-getImporterStartTime) / 1000 / 1000
+			storeCreateImporterAggregate += float64(getImporterEndTime-getImporterStartTime) / 1000
 
 		case *snapshottypes.SnapshotItem_IAVL:
 			if importer == nil {
@@ -817,7 +814,7 @@ loop:
 			importStartTime := time.Now().UnixMicro()
 			err := importer.Add(node)
 			importEndTime := time.Now().UnixMicro()
-			importLatencyAggregate += float64(importEndTime-importStartTime) / 1000 / 1000
+			importLatencyAggregate += float64(importEndTime-importStartTime) / 1000
 
 			if err != nil {
 				return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "IAVL node import failed")
@@ -827,12 +824,16 @@ loop:
 			break loop
 		}
 
-		if itemCount%10000 == 0 {
-			passedTime = float64(time.Now().UnixMicro()-startTime) / 1000 / 1000
+		if itemCount%5000 == 0 {
+			passedTime = float64(time.Now().UnixMicro()-startTime) / 1000
 			fmt.Printf("[COSMOS-STORE] Item count: %d \n", itemCount)
 			fmt.Printf("[COSMOS-STORE] Deserialize and read message latency: %f, passed time %f\n", readLatencyAggregate, passedTime)
 			fmt.Printf("[COSMOS-STORE] SnapshotItem_Store commit latency: %f, createImport latency: %f\n", storeCommitAggregate, storeCreateImporterAggregate)
 			fmt.Printf("[COSMOS-STORE] SnapshotItem_IAVL importer.add latency: %f, passed time is %f\n", importLatencyAggregate, passedTime)
+			readLatencyAggregate = 0
+			storeCommitAggregate = 0
+			storeCreateImporterAggregate = 0
+			importLatencyAggregate = 0
 		}
 	}
 	startCommit := time.Now().UnixMilli()
