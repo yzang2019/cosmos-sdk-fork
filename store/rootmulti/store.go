@@ -765,15 +765,17 @@ loop:
 		}
 		switch item := snapshotItem.Item.(type) {
 		case *snapshottypes.SnapshotItem_Store:
-			fmt.Printf("[COSMOS-STORE] SnapshotItem_Store going to commit and close importer")
+			fmt.Println("[COSMOS-STORE] SnapshotItem_Store going to commit and close importer")
 			storeStartTime := time.Now().UnixMicro()
 			if importer != nil {
 				startCommit := time.Now().UnixMicro()
 				err = importer.Commit()
+				fmt.Println("[COSMOS-STORE] SnapshotItem_Store finished commit")
 				if err != nil {
 					return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "IAVL commit failed")
 				}
 				importer.Close()
+				fmt.Println("[COSMOS-STORE] SnapshotItem_Store finished close")
 				endCommit := time.Now().UnixMicro()
 				storeCommitAggregate += float64(endCommit-startCommit) / 1000
 			}
