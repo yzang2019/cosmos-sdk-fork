@@ -238,6 +238,7 @@ func (m *Manager) Prune(retain uint32) (uint64, error) {
 // Restore begins an async snapshot restoration, mirroring ABCI OfferSnapshot. Chunks must be fed
 // via RestoreChunk() until the restore is complete or a chunk fails.
 func (m *Manager) Restore(snapshot types.Snapshot) error {
+	fmt.Println("[COSMOS] We are in the restore function!!!")
 	if snapshot.Chunks == 0 {
 		return sdkerrors.Wrap(types.ErrInvalidMetadata, "no chunks")
 	}
@@ -271,6 +272,7 @@ func (m *Manager) Restore(snapshot types.Snapshot) error {
 	chDone := make(chan restoreDone, 1)
 
 	go func() {
+
 		err := m.restoreSnapshot(snapshot, chChunks)
 		chDone <- restoreDone{
 			complete: err == nil,
@@ -294,6 +296,7 @@ func (m *Manager) restoreSnapshot(snapshot types.Snapshot, chChunks <-chan io.Re
 	if err != nil {
 		return err
 	}
+	fmt.Printf("[COSMOS] Completed building the stream reader \n")
 	defer streamReader.Close()
 
 	next, err := m.multistore.Restore(snapshot.Height, snapshot.Format, streamReader)
