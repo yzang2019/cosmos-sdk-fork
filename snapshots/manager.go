@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
-	"reflect"
 	"sort"
 	"sync"
 	"time"
@@ -327,12 +326,6 @@ func (m *Manager) restoreSnapshot(snapshot types.Snapshot, chChunks <-chan io.Re
 func (m *Manager) RestoreChunk(chunk []byte) (bool, error) {
 	fmt.Printf("[COSMOS] Restoring chunk of %d bytes\n", len(chunk))
 	m.store.db.Print()
-	fmt.Printf("[COSMOS] DB dirs is: %s\n", m.store.dir)
-	fmt.Printf("[COSMOS] Multistore is: %s\n", reflect.TypeOf(m.multistore).String())
-	fmt.Printf("[COSMOS] Operation is: %s\n", m.operation)
-	for index, row := range m.restoreChunkHashes {
-		fmt.Printf("[COSMOS] Restore Chunk Hash %d is: %s\n", index, string(row))
-	}
 
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
@@ -364,12 +357,18 @@ func (m *Manager) RestoreChunk(chunk []byte) (bool, error) {
 			"expected %x, got %x", hash, expected)
 	}
 
-	writeStart := time.Now().UnixMilli()
+	startTime := time.Now().UnixMilli()
 	// Pass the chunk to the restore, and wait for completion if it was the final one.
-	m.chRestore <- io.NopCloser(bytes.NewReader(chunk))
+	reader := bytes.NewReader(chunk)
+	readerCreateTime := time.Now().UnixMilli()
+	fmt.Printf("[COSMOS] Created a reader, restoreIndex is %d / %d , with latency: %d\n", m.restoreChunkIndex, len(m.restoreChunkHashes), readerCreateTime-startTime)
+	closer := io.NopCloser(reader)
+	closerCreateTime := time.Now().UnixMilli()
+	fmt.Printf("[COSMOS] Created a closer, restoreIndex is %d / %d , with latency: %d\n", m.restoreChunkIndex, len(m.restoreChunkHashes), closerCreateTime-readerCreateTime)
+	m.chRestore <- closer
 	m.restoreChunkIndex++
-	writeEnd := time.Now().UnixMilli()
-	fmt.Printf("[COSMOS] Created reader channel, restoreIndex is %d, numOfChunkHashes is %d , with latency: %d\n", m.restoreChunkIndex, len(m.restoreChunkHashes), writeEnd-writeStart)
+	endTime := time.Now().UnixMilli()
+	fmt.Printf("[COSMOS] Passed to channel, restoreIndex is %d / %d , with latency: %d\n", m.restoreChunkIndex, len(m.restoreChunkHashes), endTime-closerCreateTime)
 
 	if int(m.restoreChunkIndex) >= len(m.restoreChunkHashes) {
 		close(m.chRestore)
