@@ -302,7 +302,7 @@ func (m *Manager) restoreSnapshot(snapshot types.Snapshot, chChunks <-chan io.Re
 
 	go func() {
 		for running {
-			time.Sleep(1 * time.Second)
+			time.Sleep(5 * time.Second)
 			fmt.Printf("[COSMOS] Latest chunk index is: %d, number of chunks in the queue: %d \n", m.restoreChunkIndex, len(m.chRestore))
 		}
 	}()
