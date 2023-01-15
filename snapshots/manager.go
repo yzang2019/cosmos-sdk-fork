@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
+	"reflect"
 	"sort"
 	"sync"
 	"time"
@@ -287,6 +288,8 @@ func (m *Manager) Restore(snapshot types.Snapshot) error {
 
 // restoreSnapshot do the heavy work of snapshot restoration after preliminary checks on request have passed.
 func (m *Manager) restoreSnapshot(snapshot types.Snapshot, chChunks <-chan io.ReadCloser) error {
+	fmt.Printf("[COSMOS] Start restoring snapshot chunks and building stream reader \n")
+	startTime := time.Now().UnixMilli()
 	streamReader, err := NewStreamReader(chChunks)
 	if err != nil {
 		return err
@@ -294,9 +297,12 @@ func (m *Manager) restoreSnapshot(snapshot types.Snapshot, chChunks <-chan io.Re
 	defer streamReader.Close()
 
 	next, err := m.multistore.Restore(snapshot.Height, snapshot.Format, streamReader)
+	multiStoreRestoreComplete := time.Now().UnixMilli()
+	fmt.Printf("[COSMOS] MultiStoreRestore complete with a latency of: %d \n", multiStoreRestoreComplete-startTime)
 	if err != nil {
 		return sdkerrors.Wrap(err, "multistore restore")
 	}
+
 	for {
 		if next.Item == nil {
 			// end of stream
@@ -313,11 +319,14 @@ func (m *Manager) restoreSnapshot(snapshot types.Snapshot, chChunks <-chan io.Re
 		if !IsFormatSupported(extension, metadata.Format) {
 			return sdkerrors.Wrapf(types.ErrUnknownFormat, "format %v for extension %s", metadata.Format, metadata.Name)
 		}
+		fmt.Printf("[COSMOS] Restoring chunks for extension %s, %s \n", metadata.Name, reflect.TypeOf(extension))
 		next, err = extension.Restore(snapshot.Height, metadata.Format, streamReader)
 		if err != nil {
 			return sdkerrors.Wrapf(err, "extension %s restore", metadata.Name)
 		}
 	}
+	extensionRestoreComplete := time.Now().UnixMilli()
+	fmt.Printf("[COSMOS] ExtensionRestore complete with a latency of: %d \n", extensionRestoreComplete-multiStoreRestoreComplete)
 	return nil
 }
 
@@ -357,14 +366,10 @@ func (m *Manager) RestoreChunk(chunk []byte) (bool, error) {
 			"expected %x, got %x", hash, expected)
 	}
 
-	startTime := time.Now().UnixMilli()
 	// Pass the chunk to the restore, and wait for completion if it was the final one.
 	reader := bytes.NewReader(chunk)
-	readerCreateTime := time.Now().UnixMilli()
-	fmt.Printf("[COSMOS] Created a reader, restoreIndex is %d / %d , with latency: %d\n", m.restoreChunkIndex, len(m.restoreChunkHashes), readerCreateTime-startTime)
 	closer := io.NopCloser(reader)
 	closerCreateTime := time.Now().UnixMilli()
-	fmt.Printf("[COSMOS] Created a closer, restoreIndex is %d / %d , with latency: %d\n", m.restoreChunkIndex, len(m.restoreChunkHashes), closerCreateTime-readerCreateTime)
 	m.chRestore <- closer
 	m.restoreChunkIndex++
 	endTime := time.Now().UnixMilli()

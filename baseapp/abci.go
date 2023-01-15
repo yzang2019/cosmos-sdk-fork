@@ -506,6 +506,7 @@ func (app *BaseApp) OfferSnapshot(req abci.RequestOfferSnapshot) abci.ResponseOf
 		return abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT}
 	}
 
+	fmt.Printf("[COSMOS] Now we are going to use this snapshot to restore the state: %s\n", snapshot.String())
 	err = app.snapshotManager.Restore(snapshot)
 	switch {
 	case err == nil:
