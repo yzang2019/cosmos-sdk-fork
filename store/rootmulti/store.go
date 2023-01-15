@@ -765,6 +765,7 @@ loop:
 		}
 		switch item := snapshotItem.Item.(type) {
 		case *snapshottypes.SnapshotItem_Store:
+			fmt.Printf("[COSMOS-STORE] SnapshotItem_Store going to commit and close importer")
 			storeStartTime := time.Now().UnixMicro()
 			if importer != nil {
 				startCommit := time.Now().UnixMicro()
