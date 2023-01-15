@@ -746,105 +746,119 @@ func (rs *Store) Restore(height uint64, format uint32, protoReader protoio.Reade
 	var importLatencyAggregate float64
 	var readLatencyAggregate float64
 	var passedTime float64
-	var storeCommitAggregate float64
-	var storeCreateImporterAggregate float64
+	var storeAggregate float64
 	var startTime = time.Now().UnixMicro()
-loop:
-	for {
-		startRead := time.Now().UnixMicro()
-		snapshotItem = snapshottypes.SnapshotItem{}
-		itemCount++
-		err := protoReader.ReadMsg(&snapshotItem)
-		endRead := time.Now().UnixMicro()
-		readLatencyAggregate += float64(endRead-startRead) / 1000
-
-		if err == io.EOF {
-			fmt.Println("[COSMOS] Hitting EOF breaking the loop")
-			break
-		} else if err != nil {
-			return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "invalid protobuf message")
+	var chMessage chan snapshottypes.SnapshotItem
+	var stopReading = false
+	go func() {
+		for !stopReading {
+			snapshotItem = snapshottypes.SnapshotItem{}
+			itemCount++
+			err := protoReader.ReadMsg(&snapshotItem)
+			if err == io.EOF {
+				fmt.Println("[COSMOS] SnapshotItem_Store going to commit and close importer")
+				continue
+			} else if err != nil {
+				panic(sdkerrors.Wrap(err, "invalid protobuf message"))
+			}
+			chMessage <- snapshotItem
+			switch snapshotItem.Item.(type) {
+			case *snapshottypes.SnapshotItem_Store, *snapshottypes.SnapshotItem_IAVL:
+			default:
+				break
+			}
 		}
-		switch item := snapshotItem.Item.(type) {
-		case *snapshottypes.SnapshotItem_Store:
-			fmt.Println("[COSMOS-STORE] SnapshotItem_Store going to commit and close importer")
-			storeStartTime := time.Now().UnixMicro()
-			if importer != nil {
-				startCommit := time.Now().UnixMicro()
-				err = importer.Commit()
-				fmt.Println("[COSMOS-STORE] SnapshotItem_Store finished commit")
-				if err != nil {
-					return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "IAVL commit failed")
+	}()
+
+	for true {
+		select {
+		case snapshotItem := <-chMessage:
+			var err error
+			switch item := snapshotItem.Item.(type) {
+			case *snapshottypes.SnapshotItem_Store:
+				fmt.Println("[COSMOS-STORE] SnapshotItem_Store going to commit and close importer")
+				storeStartTime := time.Now().UnixMicro()
+				if importer != nil {
+					err = importer.Commit()
+					fmt.Println("[COSMOS-STORE] SnapshotItem_Store finished commit")
+					if err != nil {
+						stopReading = true
+						return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "IAVL commit failed")
+					}
+					importer.Close()
+					fmt.Println("[COSMOS-STORE] SnapshotItem_Store finished close")
 				}
-				importer.Close()
-				fmt.Println("[COSMOS-STORE] SnapshotItem_Store finished close")
-				endCommit := time.Now().UnixMicro()
-				storeCommitAggregate += float64(endCommit-startCommit) / 1000
-			}
 
-			getImporterStartTime := time.Now().UnixMicro()
-			store, ok := rs.GetStoreByName(item.Store.Name).(*iavl.Store)
-			if !ok || store == nil {
-				return snapshottypes.SnapshotItem{}, sdkerrors.Wrapf(sdkerrors.ErrLogic, "cannot import into non-IAVL store %q", item.Store.Name)
-			}
-			importer, err = store.Import(int64(height))
-			if err != nil {
-				return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "import failed")
-			}
+				store, ok := rs.GetStoreByName(item.Store.Name).(*iavl.Store)
+				if !ok || store == nil {
+					stopReading = true
+					return snapshottypes.SnapshotItem{}, sdkerrors.Wrapf(sdkerrors.ErrLogic, "cannot import into non-IAVL store %q", item.Store.Name)
+				}
+				importer, err = store.Import(int64(height))
+				if err != nil {
+					stopReading = true
+					return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "import failed")
+				}
 
-			getImporterEndTime := time.Now().UnixMicro()
-			storeCreateImporterAggregate += float64(getImporterEndTime-getImporterStartTime) / 1000
-			storeEndTime := time.Now().UnixMicro()
-			latency := float64(storeEndTime-storeStartTime) / 1000
-			fmt.Printf("[COSMOS-STORE] Encount SnapshotItem_Store with total latency of %f\n", latency)
+				storeEndTime := time.Now().UnixMicro()
+				storeAggregate += float64(storeEndTime-storeStartTime) / 1000
+				latency := float64(storeEndTime-storeStartTime) / 1000
+				fmt.Printf("[COSMOS-STORE] Encount SnapshotItem_Store with total latency of %f\n", latency)
 
-		case *snapshottypes.SnapshotItem_IAVL:
-			if importer == nil {
-				return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(sdkerrors.ErrLogic, "received IAVL node item before store item")
-			}
-			if item.IAVL.Height > math.MaxInt8 {
-				return snapshottypes.SnapshotItem{}, sdkerrors.Wrapf(sdkerrors.ErrLogic, "node height %v cannot exceed %v",
-					item.IAVL.Height, math.MaxInt8)
-			}
-			node := &iavltree.ExportNode{
-				Key:     item.IAVL.Key,
-				Value:   item.IAVL.Value,
-				Height:  int8(item.IAVL.Height),
-				Version: item.IAVL.Version,
-			}
-			// Protobuf does not differentiate between []byte{} as nil, but fortunately IAVL does
-			// not allow nil keys nor nil values for leaf nodes, so we can always set them to empty.
-			if node.Key == nil {
-				node.Key = []byte{}
-			}
-			if node.Height == 0 && node.Value == nil {
-				node.Value = []byte{}
-			}
-			importStartTime := time.Now().UnixMicro()
-			err := importer.Add(node)
-			importEndTime := time.Now().UnixMicro()
-			importLatencyAggregate += float64(importEndTime-importStartTime) / 1000
+			case *snapshottypes.SnapshotItem_IAVL:
+				if importer == nil {
+					stopReading = true
+					return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(sdkerrors.ErrLogic, "received IAVL node item before store item")
+				}
+				if item.IAVL.Height > math.MaxInt8 {
+					stopReading = true
+					return snapshottypes.SnapshotItem{}, sdkerrors.Wrapf(sdkerrors.ErrLogic, "node height %v cannot exceed %v",
+						item.IAVL.Height, math.MaxInt8)
+				}
+				node := &iavltree.ExportNode{
+					Key:     item.IAVL.Key,
+					Value:   item.IAVL.Value,
+					Height:  int8(item.IAVL.Height),
+					Version: item.IAVL.Version,
+				}
+				// Protobuf does not differentiate between []byte{} as nil, but fortunately IAVL does
+				// not allow nil keys nor nil values for leaf nodes, so we can always set them to empty.
+				if node.Key == nil {
+					node.Key = []byte{}
+				}
+				if node.Height == 0 && node.Value == nil {
+					node.Value = []byte{}
+				}
+				importStartTime := time.Now().UnixMicro()
+				err := importer.Add(node)
+				importEndTime := time.Now().UnixMicro()
+				importLatencyAggregate += float64(importEndTime-importStartTime) / 1000
 
-			if err != nil {
-				return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "IAVL node import failed")
+				if err != nil {
+					stopReading = true
+					return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "IAVL node import failed")
+				}
+			default:
+				break
 			}
-
 		default:
-			break loop
+			time.Sleep(10 * time.Millisecond)
 		}
 
 		if itemCount%10000 == 0 {
 			passedTime = float64(time.Now().UnixMicro()-startTime) / 1000
 			fmt.Printf("[COSMOS] Item count: %d \n", itemCount)
+			fmt.Printf("[COSMOS] SnapshotItem_Store aggregate latency: %f, passed time is %f\n", storeAggregate, passedTime)
 			fmt.Printf("[COSMOS] Deserialize and read message latency: %f, passed time %f\n", readLatencyAggregate, passedTime)
 			fmt.Printf("[COSMOS] SnapshotItem_IAVL importer.add latency: %f, passed time is %f\n", importLatencyAggregate, passedTime)
 			readLatencyAggregate = 0
-			storeCommitAggregate = 0
-			storeCreateImporterAggregate = 0
+			storeAggregate = 0
 			importLatencyAggregate = 0
 		}
 	}
-	startCommit := time.Now().UnixMilli()
 
+	endTime := time.Now().UnixMilli()
+	fmt.Printf("[COSMOS-STORE] Outside of loop with total time: %d\n", endTime-startTime)
 	if importer != nil {
 		err := importer.Commit()
 		if err != nil {
@@ -853,12 +867,7 @@ loop:
 		importer.Close()
 	}
 
-	endCommit := time.Now().UnixMilli()
-	fmt.Printf("[COSMOS-STORE] Outside of loop commit latency: %d\n", endCommit-startCommit)
-
 	flushMetadata(rs.db, int64(height), rs.buildCommitInfo(int64(height)), []int64{})
-	flushComplete := time.Now().UnixMilli()
-	fmt.Printf("[COSMOS-STORE] Outside of loop flush metadata latency: %d\n", flushComplete-endCommit)
 	return snapshotItem, rs.LoadLatestVersion()
 }
 
