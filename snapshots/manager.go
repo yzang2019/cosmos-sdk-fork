@@ -3,6 +3,7 @@ package snapshots
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -325,7 +326,8 @@ func (m *Manager) restoreSnapshot(snapshot types.Snapshot, chChunks <-chan io.Re
 // Chunks must be given until the restore is complete, returning true, or a chunk errors.
 func (m *Manager) RestoreChunk(chunk []byte) (bool, error) {
 	fmt.Printf("[COSMOS] Restoring chunk of %d bytes\n", len(chunk))
-
+	data, _ := json.Marshal(m)
+	fmt.Printf("[COSMOS] Snapshot manager is %s\n", string(data))
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 	if m.operation != opRestore {
