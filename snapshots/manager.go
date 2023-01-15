@@ -3,11 +3,11 @@ package snapshots
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"math"
+	"reflect"
 	"sort"
 	"sync"
 	"time"
@@ -326,8 +326,14 @@ func (m *Manager) restoreSnapshot(snapshot types.Snapshot, chChunks <-chan io.Re
 // Chunks must be given until the restore is complete, returning true, or a chunk errors.
 func (m *Manager) RestoreChunk(chunk []byte) (bool, error) {
 	fmt.Printf("[COSMOS] Restoring chunk of %d bytes\n", len(chunk))
-	data, _ := json.Marshal(m)
-	fmt.Printf("[COSMOS] Snapshot manager is %s\n", string(data))
+	m.store.db.Print()
+	fmt.Printf("[COSMOS] DB dirs is: %s\n", m.store.dir)
+	fmt.Printf("[COSMOS] Multistore is: %s\n", reflect.TypeOf(m.multistore).String())
+	fmt.Printf("[COSMOS] Operation is: %s\n", m.operation)
+	for index, row := range m.restoreChunkHashes {
+		fmt.Printf("[COSMOS] Restore Chunk Hash %d is: %s\n", index, string(row))
+	}
+
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 	if m.operation != opRestore {
