@@ -736,9 +736,7 @@ func (rs *Store) Snapshot(height uint64, protoWriter protoio.Writer) error {
 
 // Restore implements snapshottypes.Snapshotter.
 // returns next snapshot item and error.
-func (rs *Store) Restore(
-	height uint64, format uint32, protoReader protoio.Reader,
-) (snapshottypes.SnapshotItem, error) {
+func (rs *Store) Restore(height uint64, format uint32, protoReader protoio.Reader) (snapshottypes.SnapshotItem, error) {
 	// Import nodes into stores. The first item is expected to be a SnapshotItem containing
 	// a SnapshotStoreItem, telling us which store to import into. The following items will contain
 	// SnapshotNodeItem (i.e. ExportNode) until we reach the next SnapshotStoreItem or EOF.
@@ -757,7 +755,7 @@ loop:
 		err := protoReader.ReadMsg(&snapshotItem)
 		endRead := time.Now().UnixMicro()
 		readLatencyAggregate += endRead - startRead
-		if itemCount%1000 == 0 {
+		if itemCount%5000 == 0 {
 			passedTime = time.Now().UnixMicro() - startTime
 			fmt.Printf("[COSMOS-STORE] Item count: %d \n", itemCount)
 			fmt.Printf("[COSMOS-STORE] Deserialize and read message latency: %d, passed time %d\n", readLatencyAggregate, passedTime)
@@ -820,7 +818,7 @@ loop:
 			err := importer.Add(node)
 			importEndTime := time.Now().UnixMicro()
 			importLatencyAggregate += importEndTime - importStartTime
-			if itemCount%1000 == 0 {
+			if itemCount%5000 == 0 {
 				passedTime = time.Now().UnixMicro() - startTime
 				fmt.Printf("[COSMOS-STORE] SnapshotItem_IAVL importer.add latency: %d, passed time is %d\n", importLatencyAggregate, passedTime)
 			}

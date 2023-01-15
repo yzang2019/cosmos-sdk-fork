@@ -297,13 +297,21 @@ func (m *Manager) restoreSnapshot(snapshot types.Snapshot, chChunks <-chan io.Re
 		return err
 	}
 	fmt.Printf("[COSMOS] Completed building the stream reader \n")
+	var running = true
 	defer streamReader.Close()
 
+	go func() {
+		for running {
+			time.Sleep(1 * time.Second)
+			fmt.Printf("[COSMOS] Latest chunk index is: %d, number of chunks in the queue: %d \n", m.restoreChunkIndex, len(m.chRestore))
+		}
+	}()
 	next, err := m.multistore.Restore(snapshot.Height, snapshot.Format, streamReader)
 
 	if err != nil {
 		return sdkerrors.Wrap(err, "multistore restore")
 	}
+	running = false
 	multiStoreRestoreComplete := time.Now().UnixMilli()
 	fmt.Printf("[COSMOS] MultiStoreRestore complete with a latency of: %d \n", multiStoreRestoreComplete-startTime)
 	for {
