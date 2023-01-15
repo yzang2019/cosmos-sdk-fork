@@ -765,6 +765,7 @@ loop:
 		}
 		switch item := snapshotItem.Item.(type) {
 		case *snapshottypes.SnapshotItem_Store:
+			storeStartTime := time.Now().UnixMicro()
 			if importer != nil {
 				startCommit := time.Now().UnixMicro()
 				err = importer.Commit()
@@ -788,6 +789,9 @@ loop:
 
 			getImporterEndTime := time.Now().UnixMicro()
 			storeCreateImporterAggregate += float64(getImporterEndTime-getImporterStartTime) / 1000
+			storeEndTime := time.Now().UnixMicro()
+			latency := float64(storeEndTime-storeStartTime) / 1000
+			fmt.Printf("[COSMOS-STORE] Encount SnapshotItem_Store with total latency of %f\n", latency)
 
 		case *snapshottypes.SnapshotItem_IAVL:
 			if importer == nil {
