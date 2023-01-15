@@ -743,9 +743,9 @@ func (rs *Store) Restore(height uint64, format uint32, protoReader protoio.Reade
 	var importer *iavltree.Importer
 	var snapshotItem snapshottypes.SnapshotItem
 	var itemCount = 0
-	var importLatencyAggregate int64
-	var readLatencyAggregate int64
-	var passedTime int64
+	var importLatencyAggregate float64
+	var readLatencyAggregate float64
+	var passedTime float64
 	var startTime = time.Now().UnixMicro()
 loop:
 	for {
@@ -754,11 +754,11 @@ loop:
 		itemCount++
 		err := protoReader.ReadMsg(&snapshotItem)
 		endRead := time.Now().UnixMicro()
-		readLatencyAggregate += endRead - startRead
-		if itemCount%5000 == 0 {
-			passedTime = time.Now().UnixMicro() - startTime
+		readLatencyAggregate += float64(endRead-startRead) / 1000 / 1000
+		if itemCount%10000 == 0 {
+			passedTime = float64(time.Now().UnixMicro()-startTime) / 1000 / 1000
 			fmt.Printf("[COSMOS-STORE] Item count: %d \n", itemCount)
-			fmt.Printf("[COSMOS-STORE] Deserialize and read message latency: %d, passed time %d\n", readLatencyAggregate, passedTime)
+			fmt.Printf("[COSMOS-STORE] Deserialize and read message latency: %f, passed time %f\n", readLatencyAggregate, passedTime)
 		}
 		if err == io.EOF {
 			break
@@ -817,10 +817,10 @@ loop:
 			importStartTime := time.Now().UnixMicro()
 			err := importer.Add(node)
 			importEndTime := time.Now().UnixMicro()
-			importLatencyAggregate += importEndTime - importStartTime
-			if itemCount%5000 == 0 {
-				passedTime = time.Now().UnixMicro() - startTime
-				fmt.Printf("[COSMOS-STORE] SnapshotItem_IAVL importer.add latency: %d, passed time is %d\n", importLatencyAggregate, passedTime)
+			importLatencyAggregate += float64(importEndTime-importStartTime) / 1000 / 1000
+			if itemCount%10000 == 0 {
+				passedTime = float64(time.Now().UnixMicro()-startTime) / 1000 / 1000
+				fmt.Printf("[COSMOS-STORE] SnapshotItem_IAVL importer.add latency: %f, passed time is %f\n", importLatencyAggregate, passedTime)
 			}
 			if err != nil {
 				return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "IAVL node import failed")
