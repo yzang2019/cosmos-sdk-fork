@@ -744,19 +744,26 @@ func (rs *Store) Restore(
 	// SnapshotNodeItem (i.e. ExportNode) until we reach the next SnapshotStoreItem or EOF.
 	var importer *iavltree.Importer
 	var snapshotItem snapshottypes.SnapshotItem
+	var itemCount = 0
+	var importLatencyAggregate int64
+	var readLatencyAggregate int64
 loop:
 	for {
-		startRead := time.Now().UnixMilli()
+		startRead := time.Now().UnixMicro()
 		snapshotItem = snapshottypes.SnapshotItem{}
+		itemCount++
 		err := protoReader.ReadMsg(&snapshotItem)
-		endRead := time.Now().UnixMilli()
-		fmt.Printf("[COSMOS-STORE] Deserialize and read message latency: %d\n", endRead-startRead)
+		endRead := time.Now().UnixMicro()
+		readLatencyAggregate += endRead - startRead
+		if itemCount%100 == 0 {
+			fmt.Printf("[COSMOS-STORE] Item count: %d \n", itemCount)
+			fmt.Printf("[COSMOS-STORE] Deserialize and read message latency: %d\n", readLatencyAggregate)
+		}
 		if err == io.EOF {
 			break
 		} else if err != nil {
 			return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "invalid protobuf message")
 		}
-		fmt.Printf("[COSMOS-STORE] Item is: %s \n", snapshotItem.String())
 		switch item := snapshotItem.Item.(type) {
 		case *snapshottypes.SnapshotItem_Store:
 			if importer != nil {
@@ -806,10 +813,13 @@ loop:
 			if node.Height == 0 && node.Value == nil {
 				node.Value = []byte{}
 			}
-			importStartTime := time.Now().UnixMilli()
+			importStartTime := time.Now().UnixMicro()
 			err := importer.Add(node)
-			importEndTime := time.Now().UnixMilli()
-			fmt.Printf("[COSMOS-STORE] SnapshotItem_IAVL importer.add latency: %d\n", importEndTime-importStartTime)
+			importEndTime := time.Now().UnixMicro()
+			importLatencyAggregate += importEndTime - importStartTime
+			if itemCount%100 == 0 {
+				fmt.Printf("[COSMOS-STORE] SnapshotItem_IAVL importer.add latency: %d\n", importLatencyAggregate)
+			}
 			if err != nil {
 				return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "IAVL node import failed")
 			}
