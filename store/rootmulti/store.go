@@ -747,7 +747,7 @@ func (rs *Store) Restore(height uint64, format uint32, protoReader protoio.Reade
 	var passedTime float64
 	var storeAggregate float64
 	var startTime = time.Now().UnixMicro()
-	var chMessage = make(chan snapshottypes.SnapshotItem, 10000)
+	var chMessage = make(chan snapshottypes.SnapshotItem, 1000)
 	var stopReading = false
 	go func() {
 		for !stopReading {
