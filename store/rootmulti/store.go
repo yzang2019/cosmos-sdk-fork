@@ -747,6 +747,8 @@ func (rs *Store) Restore(
 	var itemCount = 0
 	var importLatencyAggregate int64
 	var readLatencyAggregate int64
+	var passedTime int64
+	var startTime = time.Now().UnixMicro()
 loop:
 	for {
 		startRead := time.Now().UnixMicro()
@@ -755,9 +757,10 @@ loop:
 		err := protoReader.ReadMsg(&snapshotItem)
 		endRead := time.Now().UnixMicro()
 		readLatencyAggregate += endRead - startRead
-		if itemCount%100 == 0 {
+		if itemCount%1000 == 0 {
+			passedTime = time.Now().UnixMicro() - startTime
 			fmt.Printf("[COSMOS-STORE] Item count: %d \n", itemCount)
-			fmt.Printf("[COSMOS-STORE] Deserialize and read message latency: %d\n", readLatencyAggregate)
+			fmt.Printf("[COSMOS-STORE] Deserialize and read message latency: %d, passed time %d\n", readLatencyAggregate, passedTime)
 		}
 		if err == io.EOF {
 			break
@@ -817,8 +820,9 @@ loop:
 			err := importer.Add(node)
 			importEndTime := time.Now().UnixMicro()
 			importLatencyAggregate += importEndTime - importStartTime
-			if itemCount%100 == 0 {
-				fmt.Printf("[COSMOS-STORE] SnapshotItem_IAVL importer.add latency: %d\n", importLatencyAggregate)
+			if itemCount%1000 == 0 {
+				passedTime = time.Now().UnixMicro() - startTime
+				fmt.Printf("[COSMOS-STORE] SnapshotItem_IAVL importer.add latency: %d, passed time is %d\n", importLatencyAggregate, passedTime)
 			}
 			if err != nil {
 				return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "IAVL node import failed")
