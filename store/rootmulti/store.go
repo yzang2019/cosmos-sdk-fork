@@ -759,6 +759,7 @@ loop:
 		readLatencyAggregate += float64(endRead-startRead) / 1000
 
 		if err == io.EOF {
+			fmt.Println("[COSMOS] Hitting EOF breaking the loop")
 			break
 		} else if err != nil {
 			return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "invalid protobuf message")
