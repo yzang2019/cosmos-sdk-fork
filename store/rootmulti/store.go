@@ -749,7 +749,6 @@ func (rs *Store) Restore(height uint64, format uint32, protoReader protoio.Reade
 	var storeCommitAggregate float64
 	var storeCreateImporterAggregate float64
 	var startTime = time.Now().UnixMicro()
-	wg := sync.WaitGroup{}
 loop:
 	for {
 		startRead := time.Now().UnixMicro()
@@ -770,21 +769,16 @@ loop:
 			fmt.Println("[COSMOS-STORE] SnapshotItem_Store going to commit and close importer")
 			storeStartTime := time.Now().UnixMicro()
 			if importer != nil {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					startCommit := time.Now().UnixMicro()
-					err = importer.Commit()
-					fmt.Println("[COSMOS-STORE] SnapshotItem_Store finished commit")
-					if err != nil {
-						panic(sdkerrors.Wrap(err, "IAVL commit failed"))
-					}
-					importer.Close()
-					fmt.Println("[COSMOS-STORE] SnapshotItem_Store finished commit and close")
-					endCommit := time.Now().UnixMicro()
-					storeCommitAggregate += float64(endCommit-startCommit) / 1000
-				}()
-
+				startCommit := time.Now().UnixMicro()
+				err = importer.Commit()
+				fmt.Println("[COSMOS-STORE] SnapshotItem_Store finished commit")
+				if err != nil {
+					panic(sdkerrors.Wrap(err, "IAVL commit failed"))
+				}
+				importer.Close()
+				fmt.Println("[COSMOS-STORE] SnapshotItem_Store finished commit and close")
+				endCommit := time.Now().UnixMicro()
+				storeCommitAggregate += float64(endCommit-startCommit) / 1000
 			}
 
 			getImporterStartTime := time.Now().UnixMicro()
@@ -852,7 +846,6 @@ loop:
 	}
 	startCommit := time.Now().UnixMilli()
 
-	wg.Wait()
 	if importer != nil {
 		err := importer.Commit()
 		if err != nil {
