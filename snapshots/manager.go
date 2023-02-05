@@ -274,6 +274,9 @@ func (m *Manager) Restore(snapshot types.Snapshot) error {
 	go func() {
 
 		err := m.restoreSnapshot(snapshot, chChunks)
+		if err != nil {
+			fmt.Printf("[COSMOS-DEBUG] Failed to restore from snapshot, error is %s\n", err.Error())
+		}
 		chDone <- restoreDone{
 			complete: err == nil,
 			err:      err,

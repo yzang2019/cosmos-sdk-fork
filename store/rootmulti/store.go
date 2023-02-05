@@ -826,6 +826,7 @@ loop:
 			importLatencyAggregate += float64(importEndTime-importStartTime) / 1000
 
 			if err != nil {
+				fmt.Println("[COSMOS-DEBUG] Failed to import from IAVL store")
 				return snapshottypes.SnapshotItem{}, sdkerrors.Wrap(err, "IAVL node import failed")
 			}
 
